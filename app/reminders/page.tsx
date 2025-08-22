@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { toISODateInput } from "@/utils/date";
 
 type Row = {
@@ -106,6 +107,7 @@ export default function RemindersPage() {
             <option value="name-asc">Nama A-Z</option>
             <option value="name-desc">Nama Z-A</option>
           </select>
+          <Link href={`/print?months=${months}`} className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-50">🖨️ Cetak</Link>
         </div>
       </div>
 
