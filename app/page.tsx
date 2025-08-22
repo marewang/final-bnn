@@ -14,6 +14,8 @@ export default function Home() {
   const [editing, setEditing] = useState<Asn | null>(null);
   const [confirmId, setConfirmId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dueKgb, setDueKgb] = useState<Asn[]>([]);
+  const [duePangkat, setDuePangkat] = useState<Asn[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -23,6 +25,14 @@ export default function Home() {
       if (!res.ok) throw new Error(await res.text());
       const json = await res.json();
       setData(json);
+
+      // load reminders (in-app only)
+      const r = await fetch("/api/reminders", { cache: "no-store" });
+      if (r.ok) {
+        const j = await r.json();
+        setDueKgb(j.kgb || []);
+        setDuePangkat(j.pangkat || []);
+      }
     } catch (e: any) {
       setError(e?.message || "Gagal memuat data");
     } finally {
@@ -37,7 +47,7 @@ export default function Home() {
     if (!keyword) return data;
     return data.filter(d =>
       d.nama?.toLowerCase().includes(keyword) ||
-      d.nip?.toLowerCase().includes(keyword)
+      (d as any).nip?.toLowerCase().includes(keyword)
     );
   }, [q, data]);
 
@@ -71,6 +81,38 @@ export default function Home() {
         </button>
       </div>
 
+      {(dueKgb.length > 0 || duePangkat.length > 0) && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="font-medium">🔔 Pengingat (≤ 3 bulan):</span>
+            <span>KGB: <b>{dueKgb.length}</b></span>
+            <span>Pangkat: <b>{duePangkat.length}</b></span>
+          </div>
+          <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
+            {dueKgb.length > 0 && (
+              <div>
+                <div className="mb-1 text-xs font-semibold uppercase text-amber-600">KGB terdekat</div>
+                <ul className="list-disc pl-5">
+                  {dueKgb.slice(0, 5).map((r: any, i: number) => (
+                    <li key={r.id ?? 'k'+i}>{toISODateInput(r.jadwal_kgb_berikutnya)} — {r.nama} ({r.nip || "-"})</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {duePangkat.length > 0 && (
+              <div>
+                <div className="mb-1 text-xs font-semibold uppercase text-amber-600">Kenaikan Pangkat terdekat</div>
+                <ul className="list-disc pl-5">
+                  {duePangkat.slice(0, 5).map((r: any, i: number) => (
+                    <li key={r.id ?? 'p'+i}>{toISODateInput(r.jadwal_pangkat_berikutnya)} — {r.nama} ({r.nip || "-"})</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {error && <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">Error: {error}</div>}
 
       <div className="overflow-x-auto rounded-2xl border bg-white shadow-sm">
@@ -90,7 +132,7 @@ export default function Home() {
           <tbody className="divide-y">
             {loading && (<tr><td className="p-4 text-center" colSpan={8}>Memuat data...</td></tr>)}
             {!loading && filtered.length === 0 && (<tr><td className="p-4 text-center" colSpan={8}>Belum ada data</td></tr>)}
-            {filtered.map((row) => (
+            {filtered.map((row: any) => (
               <tr key={row.id} className="hover:bg-gray-50">
                 <Td>{row.nama}</Td>
                 <Td className="font-mono">{row.nip}</Td>
