@@ -1,1 +1,79 @@
+"use client";
 
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { toISODateInput } from "@/utils/date";
+
+type Row = { id: number; nama: string; nip: string; jadwal_kgb_berikutnya?: string | null; jadwal_pangkat_berikutnya?: string | null; };
+
+export default function PrintPage() {
+  const sp = useSearchParams();
+  const months = Number(sp.get("months") || "3");
+  const [kgb, setKgb] = useState<Row[]>([]);
+  const [pangkat, setPangkat] = useState<Row[]>([]);
+
+  useEffect(() => {
+    const load = async () => {
+      const m = [1,3,6].includes(months) ? months : 3;
+      const res = await fetch(`/api/reminders?months=${m}`, { cache: "no-store" });
+      const j = await res.json();
+      setKgb(j.kgb || []);
+      setPangkat(j.pangkat || []);
+    };
+    load();
+  }, [months]);
+
+  const doPrint = () => window.print();
+
+  return (
+    <div className="mx-auto max-w-5xl p-6 print:p-0">
+      <div className="mb-6 flex items-center justify-between print:hidden">
+        <div>
+          <h1 className="text-xl font-semibold">Laporan Pengingat ASN (≤ {months} bulan)</h1>
+          <p className="text-sm text-gray-500">Dicetak: {new Date().toLocaleString()}</p>
+        </div>
+        <button onClick={doPrint} className="rounded-xl border px-4 py-2 text-sm hover:bg-gray-50">🖨️ Cetak</button>
+      </div>
+
+      <section className="space-y-4">
+        <h2 className="mt-2 text-base font-semibold">KGB ≤ {months} bulan</h2>
+        <table className="min-w-full divide-y text-sm">
+          <thead><tr className="bg-gray-50 print:bg-white"><Th>Nama</Th><Th>NIP</Th><Th>Jadwal</Th></tr></thead>
+          <tbody className="divide-y">
+            {kgb.length === 0 ? <tr><Td colSpan={3} className="p-3 text-center text-gray-500">Tidak ada data</Td></tr> :
+              kgb.map(r => (<tr key={r.id}><Td>{r.nama}</Td><Td className="font-mono">{r.nip}</Td><Td>{toISODateInput(r.jadwal_kgb_berikutnya)}</Td></tr>))
+            }
+          </tbody>
+        </table>
+
+        <h2 className="mt-8 text-base font-semibold">Kenaikan Pangkat ≤ {months} bulan</h2>
+        <table className="min-w-full divide-y text-sm">
+          <thead><tr className="bg-gray-50 print:bg-white"><Th>Nama</Th><Th>NIP</Th><Th>Jadwal</Th></tr></thead>
+          <tbody className="divide-y">
+            {pangkat.length === 0 ? <tr><Td colSpan={3} className="p-3 text-center text-gray-500">Tidak ada data</Td></tr> :
+              pangkat.map(r => (<tr key={r.id}><Td>{r.nama}</Td><Td className="font-mono">{r.nip}</Td><Td>{toISODateInput(r.jadwal_pangkat_berikutnya)}</Td></tr>))
+            }
+          </tbody>
+        </table>
+      </section>
+
+      <style jsx global>{`
+        @media print {
+          header, nav, .print\\:hidden { display: none !important; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          table { page-break-inside: auto; }
+          tr { page-break-inside: avoid; page-break-after: auto; }
+          thead { display: table-header-group; }
+          tfoot { display: table-footer-group; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function Th({ children }: { children: any }) {
+  return <th className="px-3 py-2 text-left font-semibold">{children}</th>;
+}
+function Td({ children, className="", colSpan }: { children: any; className?: string; colSpan?: number }) {
+  return <td className={"px-3 py-2 " + className} colSpan={colSpan}>{children}</td>;
+}
