@@ -3,7 +3,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export default function TopNav() {
-  const [count, setCount] = useState<number | null>(null);
+  const [kgb, setKgb] = useState<number | null>(null);
+  const [pangkat, setPangkat] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -13,12 +14,11 @@ export default function TopNav() {
         if (!res.ok) throw new Error();
         const j = await res.json();
         if (!active) return;
-        const total = (j?.kgb?.length ?? 0) + (j?.pangkat?.length ?? 0);
-        setCount(total);
+        setKgb(j?.kgb?.length ?? 0);
+        setPangkat(j?.pangkat?.length ?? 0);
       } catch {}
     };
     load();
-    // refresh every 5 minutes
     const t = setInterval(load, 5 * 60 * 1000);
     return () => { active = false; clearInterval(t); };
   }, []);
@@ -30,12 +30,16 @@ export default function TopNav() {
         <Link href="/" className="rounded-lg px-3 py-1 hover:bg-gray-100">Dashboard</Link>
         <Link href="/reminders" className="relative rounded-lg px-3 py-1 hover:bg-gray-100">
           Pengingat
-          {typeof count === "number" && count > 0 && (
-            <span className="absolute -right-2 -top-2 inline-flex min-w-[22px] items-center justify-center rounded-full bg-red-600 px-1.5 py-0.5 text-xs font-semibold text-white">
-              {count}
-            </span>
-          )}
+          <span className="ml-2 inline-flex items-center gap-1">
+            {typeof kgb === "number" && kgb > 0 && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">KGB {kgb}</span>
+            )}
+            {typeof pangkat === "number" && pangkat > 0 && (
+              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-800">Pangkat {pangkat}</span>
+            )}
+          </span>
         </Link>
+        <Link href="/print" className="rounded-lg px-3 py-1 hover:bg-gray-100">Cetak</Link>
       </nav>
     </div>
   );
