@@ -1,11 +1,11 @@
 export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
-import { sql, TABLE } from "@/lib/db";
+import { sql } from "@/lib/db";
 import { addYears } from "@/utils/date";
 
 export async function GET() {
   try {
-    const rows = await sql`SELECT * FROM "${TABLE}" ORDER BY updated_at DESC`;
+    const rows = await sql`SELECT * FROM "asns" ORDER BY updated_at DESC`;
     return NextResponse.json(rows);
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || "Gagal mengambil data" }, { status: 500 });
@@ -14,11 +14,11 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const b = await req.json();
     const {
       nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat,
       jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya
-    } = body ?? {};
+    } = b ?? {};
 
     if (!nama || !nip) {
       return NextResponse.json({ error: "nama dan nip wajib diisi" }, { status: 400 });
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     const pangkat = jadwal_pangkat_berikutnya ?? addYears(riwayat_tmt_pangkat, 4);
 
     const rows = await sql`
-      INSERT INTO "${TABLE}"
+      INSERT INTO "asns"
         (nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat,
          jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya, created_at, updated_at)
       VALUES
