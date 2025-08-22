@@ -1,33 +1,33 @@
-
-"use client";
-
 export const dynamic = "force-dynamic";
-export const revalidate = 0;
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { sql } from "@/lib/db";
 import { toISODateInput } from "@/utils/date";
+import PrintButton from "./PrintButton";
 
 type Row = { id: number; nama: string; nip: string; jadwal_kgb_berikutnya?: string | null; jadwal_pangkat_berikutnya?: string | null; };
 
-export default function PrintPage() {
-  const sp = useSearchParams();
-  const months = Number(sp.get("months") || "3");
-  const [kgb, setKgb] = useState<Row[]>([]);
-  const [pangkat, setPangkat] = useState<Row[]>([]);
+export default async function PrintPage({ searchParams }: { searchParams?: { months?: string } }) {
+  const m = Number(searchParams?.months ?? "3");
+  const months: 1 | 3 | 6 = m === 1 ? 1 : m === 6 ? 6 : 3;
+  const intervalExpr = months === 1 ? "INTERVAL '1 month'" : months === 6 ? "INTERVAL '6 months'" : "INTERVAL '3 months'";
 
-  useEffect(() => {
-    const load = async () => {
-      const m = [1,3,6].includes(months) ? months : 3;
-      const res = await fetch(`/api/reminders?months=${m}`, { cache: "no-store" });
-      const j = await res.json();
-      setKgb(j.kgb || []);
-      setPangkat(j.pangkat || []);
-    };
-    load();
-  }, [months]);
+  const qKgb = `
+    SELECT id, nama, nip, jadwal_kgb_berikutnya
+    FROM "asns"
+    WHERE jadwal_kgb_berikutnya IS NOT NULL
+      AND (jadwal_kgb_berikutnya::date) BETWEEN CURRENT_DATE AND (CURRENT_DATE + ${intervalExpr})
+    ORDER BY jadwal_kgb_berikutnya ASC
+  `;
+  const qPangkat = `
+    SELECT id, nama, nip, jadwal_pangkat_berikutnya
+    FROM "asns"
+    WHERE jadwal_pangkat_berikutnya IS NOT NULL
+      AND (jadwal_pangkat_berikutnya::date) BETWEEN CURRENT_DATE AND (CURRENT_DATE + ${intervalExpr})
+    ORDER BY jadwal_pangkat_berikutnya ASC
+  `;
 
-  const doPrint = () => window.print();
+  const kgb: Row[] = await sql(qKgb);
+  const pangkat: Row[] = await sql(qPangkat);
 
   return (
     <div className="mx-auto max-w-5xl p-6 print:p-0">
@@ -36,7 +36,7 @@ export default function PrintPage() {
           <h1 className="text-xl font-semibold">Laporan Pengingat ASN (≤ {months} bulan)</h1>
           <p className="text-sm text-gray-500">Dicetak: {new Date().toLocaleString()}</p>
         </div>
-        <button onClick={doPrint} className="rounded-xl border px-4 py-2 text-sm hover:bg-gray-50">🖨️ Cetak</button>
+        <PrintButton />
       </div>
 
       <section className="space-y-4">
