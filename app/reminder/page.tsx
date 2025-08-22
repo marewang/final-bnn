@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useMemo, useState } from "react";
 import { toISODateInput } from "@/utils/date";
 
@@ -41,8 +40,7 @@ export default function RemindersPage() {
     const key = q.trim().toLowerCase();
     if (!key) return rows;
     return rows.filter(r =>
-      r.nama?.toLowerCase().includes(key) ||
-      r.nip?.toLowerCase().includes(key)
+      r.nama?.toLowerCase().includes(key) || r.nip?.toLowerCase().includes(key)
     );
   };
 
@@ -54,7 +52,7 @@ export default function RemindersPage() {
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-xl font-semibold">Pengingat (≤ 3 bulan)</h1>
-          <p className="text-sm text-gray-500">Daftar ASN yang akan jatuh tempo KGB dan Kenaikan Pangkat dalam 3 bulan ke depan.</p>
+          <p className="text-sm text-gray-500">Daftar ASN yang segera jatuh tempo KGB & Kenaikan Pangkat.</p>
         </div>
         <input
           value={q}
@@ -68,69 +66,54 @@ export default function RemindersPage() {
       {loading && <div className="rounded-2xl border bg-white p-4 text-sm">Memuat…</div>}
 
       <section className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        {/* KGB */}
-        <div className="rounded-2xl border bg-white shadow-sm">
-          <header className="flex items-center justify-between border-b bg-gray-50 px-4 py-3">
-            <h2 className="text-sm font-semibold text-gray-700">KGB ≤ 3 bulan</h2>
-            <span className="rounded-lg bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">{kgbFiltered.length} orang</span>
-          </header>
-          <div className="max-h-[70vh] overflow-auto">
-            <table className="min-w-full divide-y">
-              <thead>
-                <tr className="bg-white">
-                  <Th>Nama</Th>
-                  <Th>NIP</Th>
-                  <Th>Jadwal</Th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {kgbFiltered.length === 0 && (
-                  <tr><Td colSpan={3} className="p-4 text-center text-sm text-gray-500">Tidak ada yang due</Td></tr>
-                )}
-                {kgbFiltered.map(row => (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <Td>{row.nama}</Td>
-                    <Td className="font-mono">{row.nip}</Td>
-                    <Td className="font-medium">{toISODateInput(row.jadwal_kgb_berikutnya)}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Pangkat */}
-        <div className="rounded-2xl border bg-white shadow-sm">
-          <header className="flex items-center justify-between border-b bg-gray-50 px-4 py-3">
-            <h2 className="text-sm font-semibold text-gray-700">Kenaikan Pangkat ≤ 3 bulan</h2>
-            <span className="rounded-lg bg-indigo-100 px-2 py-1 text-xs font-medium text-indigo-800">{pangkatFiltered.length} orang</span>
-          </header>
-          <div className="max-h-[70vh] overflow-auto">
-            <table className="min-w-full divide-y">
-              <thead>
-                <tr className="bg-white">
-                  <Th>Nama</Th>
-                  <Th>NIP</Th>
-                  <Th>Jadwal</Th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {pangkatFiltered.length === 0 && (
-                  <tr><Td colSpan={3} className="p-4 text-center text-sm text-gray-500">Tidak ada yang due</Td></tr>
-                )}
-                {pangkatFiltered.map(row => (
-                  <tr key={row.id} className="hover:bg-gray-50">
-                    <Td>{row.nama}</Td>
-                    <Td className="font-mono">{row.nip}</Td>
-                    <Td className="font-medium">{toISODateInput(row.jadwal_pangkat_berikutnya)}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <Panel title="KGB ≤ 3 bulan" badge={kgbFiltered.length} badgeClass="bg-amber-100 text-amber-800">
+          <Table rows={kgbFiltered} dateKey="jadwal_kgb_berikutnya" />
+        </Panel>
+        <Panel title="Kenaikan Pangkat ≤ 3 bulan" badge={pangkatFiltered.length} badgeClass="bg-indigo-100 text-indigo-800">
+          <Table rows={pangkatFiltered} dateKey="jadwal_pangkat_berikutnya" />
+        </Panel>
       </section>
     </div>
+  );
+}
+
+function Panel({ title, badge, badgeClass, children }:{
+  title: string; badge: number; badgeClass: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border bg-white shadow-sm">
+      <header className="flex items-center justify-between border-b bg-gray-50 px-4 py-3">
+        <h2 className="text-sm font-semibold text-gray-700">{title}</h2>
+        <span className={`rounded-lg px-2 py-1 text-xs font-medium ${badgeClass}`}>{badge} orang</span>
+      </header>
+      <div className="max-h-[70vh] overflow-auto">{children}</div>
+    </div>
+  );
+}
+
+function Table({ rows, dateKey }:{ rows: Row[]; dateKey: "jadwal_kgb_berikutnya" | "jadwal_pangkat_berikutnya" }) {
+  return (
+    <table className="min-w-full divide-y">
+      <thead>
+        <tr className="bg-white">
+          <Th>Nama</Th>
+          <Th>NIP</Th>
+          <Th>Jadwal</Th>
+        </tr>
+      </thead>
+      <tbody className="divide-y">
+        {rows.length === 0 && (
+          <tr><Td colSpan={3} className="p-4 text-center text-sm text-gray-500">Tidak ada yang due</Td></tr>
+        )}
+        {rows.map(row => (
+          <tr key={row.id} className="hover:bg-gray-50">
+            <Td>{row.nama}</Td>
+            <Td className="font-mono">{row.nip}</Td>
+            <Td className="font-medium">{toISODateInput(row[dateKey] as any)}</Td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
