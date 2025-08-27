@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export const metadata = { title: "Masuk" };
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
