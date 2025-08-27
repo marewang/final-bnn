@@ -20,7 +20,7 @@ export function middleware(req: NextRequest) {
       return NextResponse.next();
     }
     const hasSession = req.cookies.get("session");
-    if (!hasSession /* && process.env.SKIP_AUTH !== "1" */) {
+    if (!hasSession) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "content-type": "application/json" },
@@ -31,7 +31,7 @@ export function middleware(req: NextRequest) {
 
   // For pages:
   const hasSession = req.cookies.get("session");
-  if (!hasSession /* && process.env.SKIP_AUTH !== "1" */) {
+  if (!hasSession) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("returnTo", pathname || "/");
