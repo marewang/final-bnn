@@ -4,8 +4,8 @@ import TopNav from "@/components/TopNav";
 import { Toaster } from "@/components/toast";
 
 export const metadata = {
-  title: "ASN CRUD (Neon)",
-  description: "CRUD ASN + Pengingat KGB & Pangkat",
+  title: "BNN App",
+  description: "Pengingat Kenaikan Gaji & Pangkat",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
