@@ -60,17 +60,6 @@ export default async function PrintPage({ searchParams }: { searchParams?: { mon
           </tbody>
         </table>
       </section>
-
-      <style jsx global>{`
-        @media print {
-          header, nav, .print\\:hidden { display: none !important; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          table { page-break-inside: auto; }
-          tr { page-break-inside: avoid; page-break-after: auto; }
-          thead { display: table-header-group; }
-          tfoot { display: table-footer-group; }
-        }
-      `}</style>
     </div>
   );
 }
