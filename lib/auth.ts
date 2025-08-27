@@ -1,6 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual, scrypt as _scrypt } from "node:crypto";
-import { promisify } from "node:util";
-const scrypt = promisify(_scrypt);
+import { createHmac, randomBytes, timingSafeEqual, scryptSync } from "node:crypto";
 
 const SESSION_NAME = "session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
@@ -11,11 +9,11 @@ function getSecret(): string {
   return s;
 }
 
-// ---------- Password Hashing (scrypt) ----------
+// ---------- Password Hashing (scryptSync) ----------
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
   const N = 16384, r = 8, p = 1, keylen = 32;
-  const key = (await scrypt(password, salt, keylen, { N, r, p })) as Buffer;
+  const key = scryptSync(password, salt, keylen, { N, r, p });
   return `scrypt$${N}$${r}$${p}$${salt.toString("hex")}$${key.toString("hex")}`;
 }
 
@@ -26,7 +24,7 @@ export async function verifyPassword(password: string, stored: string): Promise<
     const N = Number(nStr), r = Number(rStr), p = Number(pStr);
     const salt = Buffer.from(saltHex, "hex");
     const expected = Buffer.from(keyHex, "hex");
-    const derived = (await scrypt(password, salt, expected.length, { N, r, p })) as Buffer;
+    const derived = scryptSync(password, salt, expected.length, { N, r, p });
     return derived.length === expected.length && timingSafeEqual(derived, expected);
   } catch {
     return false;
