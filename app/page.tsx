@@ -120,7 +120,7 @@ export default function Home() {
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") onSearch(); }}
           />
-          <button onClick={onSearch} className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50">Cari</button>
+          <button type="button" onClick={onSearch} className="rounded-lg border px-3 py-2 text-sm hover:bg-gray-50">Cari</button>
         </div>
         <div className="flex items-center gap-2">
           <label className="text-sm text-gray-600">Baris:</label>
@@ -134,7 +134,7 @@ export default function Home() {
             <option value={20}>20</option>
             <option value={50}>50</option>
           </select>
-          <button onClick={startCreate} className="rounded-xl bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700">
+          <button type="button" onClick={startCreate} className="rounded-xl bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700">
             + Tambah ASN
           </button>
         </div>
@@ -171,9 +171,21 @@ export default function Home() {
                 <td className="px-4 py-3 text-sm font-medium">{toISODateInput(row.jadwal_pangkat_berikutnya)}</td>
                 <td className="px-4 py-3 text-sm">{toISODateInput((row as any).updated_at)}</td>
                 <td className="px-4 py-3 text-sm">
-                  <div className="flex gap-2">
-                    <button onClick={() => setEditing(row)} className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50">Edit</button>
-                    <button onClick={() => setConfirmId(row.id!)} className="rounded-lg bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700">Hapus</button>
+                  <div className="relative z-10 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); startEdit(row); }}
+                      className="rounded-lg border px-3 py-1 text-sm hover:bg-gray-50"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setConfirmId(row.id!); }}
+                      className="rounded-lg bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700"
+                    >
+                      Hapus
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -186,6 +198,7 @@ export default function Home() {
         <div className="text-sm text-gray-600">Total: {total} data</div>
         <div className="flex items-center gap-1">
           <button
+            type="button"
             className="rounded-lg border px-3 py-1 text-sm disabled:opacity-50"
             onClick={() => onChangePage(Math.max(1, page - 1))}
             disabled={page <= 1}
@@ -194,6 +207,7 @@ export default function Home() {
           </button>
           <span className="px-2 text-sm">Hal {page} / {pageCount}</span>
           <button
+            type="button"
             className="rounded-lg border px-3 py-1 text-sm disabled:opacity-50"
             onClick={() => onChangePage(Math.min(pageCount, page + 1))}
             disabled={page >= pageCount}
