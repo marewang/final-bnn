@@ -1,16 +1,42 @@
 "use client";
-import { ReactNode, useEffect } from "react";
-export default function Modal({ open, onClose, children, title }:{ open:boolean; onClose:()=>void; children:ReactNode; title:string }) {
-  useEffect(()=>{ const esc=(e:KeyboardEvent)=>{ if(e.key==="Escape") onClose(); }; document.addEventListener("keydown",esc); return ()=>document.removeEventListener("keydown",esc); },[onClose]);
-  if (!open) return null;
+
+import { useEffect } from "react";
+
+export default function Modal({
+  open,
+  onClose,
+  title,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title?: string;
+  children: React.ReactNode;
+}) {
+  useEffect(() => {
+    // lock scroll when modal open
+    if (open) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [open]);
+
+  if (!open) return null; // <— tidak render sama sekali saat tertutup
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold">{title}</h3>
-          <button onClick={onClose} className="rounded-full px-3 py-1 text-sm hover:bg-gray-100">✕</button>
-        </div>
-        {children}
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-2xl rounded-2xl bg-white shadow-xl">
+        <header className="flex items-center justify-between border-b px-4 py-3">
+          <h3 className="text-base font-semibold">{title}</h3>
+          <button type="button" onClick={onClose} className="rounded-lg px-2 py-1 hover:bg-gray-100">
+            ✕
+          </button>
+        </header>
+        <div className="p-4">{children}</div>
       </div>
     </div>
   );
