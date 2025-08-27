@@ -1,24 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+export const dynamic = "force-dynamic";
+
+import React, { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+function LoginInner() {
   const router = useRouter();
   const sp = useSearchParams();
   const returnTo = sp.get("returnTo") || "/";
 
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  // Jika sudah login, redirect
   useEffect(() => {
-    fetch("/api/auth/me", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((j) => { if (j?.user) router.replace(returnTo); })
-      .catch(() => {});
-  }, []);
+    let canceled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/auth/me", { cache: "no-store" });
+        if (r.ok) {
+          const j = await r.json();
+          if (!canceled && j?.user) router.replace(returnTo);
+        }
+      } catch {}
+    })();
+    return () => {
+      canceled = true;
+    };
+  }, [router, returnTo]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,7 +45,7 @@ export default function LoginPage() {
       const j = await res.json();
       if (!res.ok) throw new Error(j?.error || "Gagal login");
       router.replace(returnTo);
-    } catch (e:any) {
+    } catch (e: any) {
       setMsg(String(e?.message || e));
     } finally {
       setLoading(false);
@@ -44,6 +56,7 @@ export default function LoginPage() {
     <div className="mx-auto mt-16 max-w-md rounded-2xl border bg-white p-6 shadow-sm">
       <h1 className="mb-1 text-xl font-semibold">Masuk</h1>
       <p className="mb-6 text-sm text-gray-500">Gunakan email dan password Anda.</p>
+
       <form onSubmit={submit} className="space-y-4">
         <div>
           <label className="mb-1 block text-sm font-medium">Email</label>
@@ -67,7 +80,11 @@ export default function LoginPage() {
             required
           />
         </div>
-        {msg && <div className="rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-700">{msg}</div>}
+        {msg && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+            {msg}
+          </div>
+        )}
         <button
           type="submit"
           disabled={loading}
@@ -86,5 +103,14 @@ export default function LoginPage() {
         </pre>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  // Wajib dibungkus Suspense bila memakai useSearchParams()
+  return (
+    <Suspense fallback={<div className="p-6">Memuat...</div>}>
+      <LoginInner />
+    </Suspense>
   );
 }
