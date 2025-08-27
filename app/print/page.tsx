@@ -46,7 +46,6 @@ export default async function PrintPage({
     ORDER BY jadwal_pangkat_berikutnya ASC
   `;
 
-  // Cast hasil query ke Row[] agar lolos TypeScript
   const kgb = (await sql(qKgb)) as Row[];
   const pangkat = (await sql(qPangkat)) as Row[];
 
@@ -70,23 +69,23 @@ export default async function PrintPage({
               <Th>Jadwal</Th>
             </tr>
           </thead>
-        <tbody className="divide-y">
-          {kgb.length === 0 ? (
-            <tr>
-              <Td colSpan={3} className="p-3 text-center text-gray-500">
-                Tidak ada data
-              </Td>
-            </tr>
-          ) : (
-            kgb.map((r) => (
-              <tr key={r.id}>
-                <Td>{r.nama}</Td>
-                <Td className="font-mono">{r.nip}</Td>
-                <Td>{toISODateInput(r.jadwal_kgb_berikutnya)}</Td>
+          <tbody className="divide-y">
+            {kgb.length === 0 ? (
+              <tr>
+                <Td colSpan={3} className="p-3 text-center text-gray-500">
+                  Tidak ada data
+                </Td>
               </tr>
-            ))
-          )}
-        </tbody>
+            ) : (
+              kgb.map((r) => (
+                <tr key={r.id}>
+                  <Td>{r.nama}</Td>
+                  <Td className="font-mono">{r.nip}</Td>
+                  <Td>{toISODateInput(r.jadwal_kgb_berikutnya)}</Td>
+                </tr>
+              ))
+            )}
+          </tbody>
         </table>
 
         <h2 className="mt-8 text-base font-semibold">Kenaikan Pangkat ≤ {months} bulan</h2>
@@ -98,23 +97,23 @@ export default async function PrintPage({
               <Th>Jadwal</Th>
             </tr>
           </thead>
-        <tbody className="divide-y">
-          {pangkat.length === 0 ? (
-            <tr>
-              <Td colSpan={3} className="p-3 text-center text-gray-500">
-                Tidak ada data
-              </Td>
-            </tr>
-          ) : (
-            pangkat.map((r) => (
-              <tr key={r.id}>
-                <Td>{r.nama}</Td>
-                <Td className="font-mono">{r.nip}</Td>
-                <Td>{toISODateInput(r.jadwal_pangkat_berikutnya)}</Td>
+          <tbody className="divide-y">
+            {pangkat.length === 0 ? (
+              <tr>
+                <Td colSpan={3} className="p-3 text-center text-gray-500">
+                  Tidak ada data
+                </Td>
               </tr>
-            ))
-          )}
-        </tbody>
+            ) : (
+              pangkat.map((r) => (
+                <tr key={r.id}>
+                  <Td>{r.nama}</Td>
+                  <Td className="font-mono">{r.nip}</Td>
+                  <Td>{toISODateInput(r.jadwal_pangkat_berikutnya)}</Td>
+                </tr>
+              ))
+            )}
+          </tbody>
         </table>
       </section>
     </div>
