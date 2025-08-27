@@ -1,8 +1,12 @@
 export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { getSession } from "@/lib/auth";
 
 export async function GET(req: Request) {
+  const s = getSession(req);
+  if (!s) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     const url = new URL(req.url);
     const m = Number(url.searchParams.get("months") ?? "3");
