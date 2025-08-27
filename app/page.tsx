@@ -135,7 +135,7 @@ export default function Home() {
             <option value={50}>50</option>
           </select>
           <button type="button" onClick={startCreate} className="rounded-xl bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700">
-            + Tambah ASN
+            + Tambah Pegawai
           </button>
         </div>
       </div>
