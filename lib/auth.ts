@@ -9,7 +9,7 @@ function getSecret(): string {
   return s;
 }
 
-// ---------- Password Hashing (scryptSync) ----------
+// Password hashing (scryptSync)
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
   const N = 16384, r = 8, p = 1, keylen = 32;
@@ -31,7 +31,6 @@ export async function verifyPassword(password: string, stored: string): Promise<
   }
 }
 
-// ---------- Session (HMAC-SHA256 signed cookie) ----------
 type SessionPayload = { uid: number; email: string; name: string; role?: string; exp: number };
 
 export function signSession(payload: Omit<SessionPayload, "exp">, maxAgeSec = SESSION_MAX_AGE_SECONDS): string {
