@@ -2,44 +2,51 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+type User = { id: number; name: string; email: string; role?: string } | null;
+
 export default function TopNav() {
-  const [kgb, setKgb] = useState<number | null>(null);
-  const [pangkat, setPangkat] = useState<number | null>(null);
+  const [user, setUser] = useState<User>(null);
 
   useEffect(() => {
     let active = true;
-    const load = async () => {
+    (async () => {
       try {
-        const res = await fetch("/api/reminders?months=3", { cache: "no-store" });
-        if (!res.ok) throw new Error();
-        const j = await res.json();
+        const me = await fetch("/api/auth/me", { cache: "no-store" });
         if (!active) return;
-        setKgb(j?.kgb?.length ?? 0);
-        setPangkat(j?.pangkat?.length ?? 0);
-      } catch {}
-    };
-    load();
-    const t = setInterval(load, 5 * 60 * 1000);
-    return () => { active = false; clearInterval(t); };
+        if (me.ok) {
+          const j = await me.json();
+          setUser(j?.user ?? null);
+        } else {
+          setUser(null);
+        }
+      } catch {
+        setUser(null);
+      }
+    })();
+    return () => { active = false; };
   }, []);
+
+  const doLogout = async () => {
+    try { await fetch("/api/auth/logout", { method: "POST" }); } catch {}
+    window.location.href = "/login";
+  };
 
   return (
     <div className="mx-auto flex max-w-6xl items-center justify-between p-4">
-      <Link href="/" className="text-base font-semibold">BNN App</Link>
+      <Link href="/" className="text-base font-semibold">BNN HRIS</Link>
       <nav className="flex items-center gap-3 text-sm">
         <Link href="/" className="rounded-lg px-3 py-1 hover:bg-gray-100">Dashboard</Link>
-        <Link href="/reminders" className="relative rounded-lg px-3 py-1 hover:bg-gray-100">
-          Pengingat
-          <span className="ml-2 inline-flex items-center gap-1">
-            {typeof kgb === "number" && kgb > 0 && (
-              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">KGB {kgb}</span>
-            )}
-            {typeof pangkat === "number" && pangkat > 0 && (
-              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-800">Pangkat {pangkat}</span>
-            )}
-          </span>
-        </Link>
+        <Link href="/reminders" className="rounded-lg px-3 py-1 hover:bg-gray-100">Pengingat</Link>
         <Link href="/print" className="rounded-lg px-3 py-1 hover:bg-gray-100">Cetak</Link>
+        <span className="mx-2 h-5 w-px bg-gray-200" />
+        {user ? (
+          <div className="flex items-center gap-2">
+            <span className="text-gray-700">👋 {user.name}</span>
+            <button onClick={doLogout} className="rounded-lg border px-3 py-1 hover:bg-gray-50">Keluar</button>
+          </div>
+        ) : (
+          <Link href="/login" className="rounded-lg border px-3 py-1 hover:bg-gray-50">Masuk</Link>
+        )}
       </nav>
     </div>
   );
