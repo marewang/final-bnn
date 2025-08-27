@@ -25,11 +25,8 @@ function escapeLike(input: string) {
     .replace(/'/g, "''");
 }
 
-// ---------- GET (list with search + paging) ----------
+// ---------- GET (list with search + paging) — PUBLIC ----------
 export async function GET(req: Request) {
-  const s = getSession(req);
-  if (!s) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   try {
     const url = new URL(req.url);
     const qRaw = (url.searchParams.get("q") || "").trim();
@@ -69,14 +66,13 @@ export async function GET(req: Request) {
   }
 }
 
-// ---------- POST (create) ----------
+// ---------- POST (create) — PROTECTED ----------
 export async function POST(req: Request) {
   const s = getSession(req);
   if (!s) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
     const b = await req.json().catch(() => ({} as any));
-    // Terima camelCase atau snake_case
     const nama = b.nama ?? b.name;
     const nip = b.nip ?? b.nomorPegawai ?? b.nomor_pegawai;
     const tmt_pns = b.tmt_pns ?? b.tmtPns;
