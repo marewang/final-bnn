@@ -25,7 +25,7 @@ export default function TopNav() {
 
   return (
     <div className="mx-auto flex max-w-6xl items-center justify-between p-4">
-      <Link href="/" className="text-base font-semibold">ASN Monitor</Link>
+      <Link href="/" className="text-base font-semibold">BNN App</Link>
       <nav className="flex items-center gap-3 text-sm">
         <Link href="/" className="rounded-lg px-3 py-1 hover:bg-gray-100">Dashboard</Link>
         <Link href="/reminders" className="relative rounded-lg px-3 py-1 hover:bg-gray-100">
