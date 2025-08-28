@@ -17,16 +17,6 @@ type Row = {
   updated_at: string | null;
 };
 
-type Body = {
-  nama?: string;
-  nip?: string;
-  tmt_pns?: string | null;
-  riwayat_tmt_kgb?: string | null;
-  riwayat_tmt_pangkat?: string | null;
-  jadwal_kgb_berikutnya?: string | null;
-  jadwal_pangkat_berikutnya?: string | null;
-};
-
 export async function GET(req: Request) {
   const sess = readSession();
   if (!sess) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,29 +27,58 @@ export async function GET(req: Request) {
   const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize") || "10")));
   const offset = (page - 1) * pageSize;
 
-  const where =
-    q.length > 0
-      ? (sql as any)`WHERE nama ILIKE ${"%" + q + "%"} OR nip ILIKE ${"%" + q + "%"}`
-      : (sql as any)``;
+  const like = `%${q}%`;
+  let data: Row[] = [];
+  let total = 0;
 
-  const data = (await sql/* sql */`
-    SELECT id, nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat,
-           jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya, updated_at
-    FROM "asns"
-    ${where}
-    ORDER BY updated_at DESC NULLS LAST, id DESC
-    LIMIT ${pageSize} OFFSET ${offset};
-  `) as unknown as Row[];
+  if (q.length > 0) {
+    // Dengan WHERE eksplisit (aman, tidak menyisipkan literal $1 di tempat yang salah)
+    data = (await sql/* sql */`
+      SELECT id, nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat,
+             jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya, updated_at
+      FROM "asns"
+      WHERE nama ILIKE ${like} OR nip ILIKE ${like}
+      ORDER BY updated_at DESC NULLS LAST, id DESC
+      LIMIT ${pageSize} OFFSET ${offset};
+    `) as unknown as Row[];
 
-  const totalRows = (await sql/* sql */`
-    SELECT COUNT(*)::text AS count
-    FROM "asns"
-    ${where};
-  `) as unknown as Array<{ count: string }>;
+    const cnt = (await sql/* sql */`
+      SELECT COUNT(*)::int AS n
+      FROM "asns"
+      WHERE nama ILIKE ${like} OR nip ILIKE ${like};
+    `) as unknown as Array<{ n: number }>;
+    total = cnt[0]?.n ?? 0;
+  } else {
+    data = (await sql/* sql */`
+      SELECT id, nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat,
+             jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya, updated_at
+      FROM "asns"
+      ORDER BY updated_at DESC NULLS LAST, id DESC
+      LIMIT ${pageSize} OFFSET ${offset};
+    `) as unknown as Row[];
 
-  const total = Number(totalRows[0]?.count || 0);
-  return NextResponse.json({ data, total, page, pageSize }, { headers: { "Cache-Control": "no-store" } });
+    const cnt = (await sql/* sql */`
+      SELECT COUNT(*)::int AS n
+      FROM "asns";
+    `) as unknown as Array<{ n: number }>;
+    total = cnt[0]?.n ?? 0;
+  }
+
+  return NextResponse.json(
+    { data, total, page, pageSize },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
+
+type Body = {
+  nama?: string;
+  nip?: string;
+  tmt_pns?: string | null;
+  riwayat_tmt_kgb?: string | null;
+  riwayat_tmt_pangkat?: string | null;
+  jadwal_kgb_berikutnya?: string | null;
+  jadwal_pangkat_berikutnya?: string | null;
+};
 
 export async function POST(req: Request) {
   const sess = readSession();
@@ -73,11 +92,13 @@ export async function POST(req: Request) {
   if (!/^\d{18}$/.test(nip)) return NextResponse.json({ error: "NIP harus 18 digit" }, { status: 400 });
 
   const rows = (await sql/* sql */`
-    INSERT INTO "asns" (nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat,
-                        jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya)
-    VALUES (${nama}, ${nip}, ${b.tmt_pns || null}, ${b.riwayat_tmt_kgb || null},
-            ${b.riwayat_tmt_pangkat || null}, ${b.jadwal_kgb_berikutnya || null},
-            ${b.jadwal_pangkat_berikutnya || null})
+    INSERT INTO "asns"
+      (nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat,
+       jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya)
+    VALUES
+      (${nama}, ${nip}, ${b.tmt_pns || null}, ${b.riwayat_tmt_kgb || null},
+       ${b.riwayat_tmt_pangkat || null}, ${b.jadwal_kgb_berikutnya || null},
+       ${b.jadwal_pangkat_berikutnya || null})
     RETURNING id, nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat,
               jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya, updated_at;
   `) as unknown as Row[];
