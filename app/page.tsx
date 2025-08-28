@@ -4,6 +4,81 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import AsnForm from "@/components/AsnForm";
 
+// ⬇⬇ Tambahkan helper aman untuk baca JSON
+async function parseJsonSafe(res: Response): Promise<any> {
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) {
+    try { return await res.json(); } catch { return null; }
+  }
+  try {
+    const txt = await res.text();
+    return txt ? { _text: txt } : null;
+  } catch {
+    return null;
+  }
+}
+
+type Row = {
+  id: number;
+  nama: string;
+  nip: string;
+  tmt_pns?: string | null;
+  riwayat_tmt_kgb?: string | null;
+  riwayat_tmt_pangkat?: string | null;
+  jadwal_kgb_berikutnya?: string | null;
+  jadwal_pangkat_berikutnya?: string | null;
+  updated_at?: string | null;
+};
+
+function fmt(d?: string | null) { /* ...biarkan seperti sebelumnya... */ }
+
+export default function Page() {
+  // ...state & fungsi lain biarkan...
+
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const u = new URL("/api/asn", window.location.origin);
+      if (q) u.searchParams.set("q", q);
+      u.searchParams.set("page", String(page));
+      u.searchParams.set("pageSize", String(pageSize));
+
+      const r = await fetch(u, { cache: "no-store", credentials: "include" });
+      const j = await parseJsonSafe(r); // ⬅ pakai parser aman
+
+      if (!r.ok) {
+        const msg = j?.error || j?._text || `Gagal memuat data (HTTP ${r.status})`;
+        throw new Error(msg);
+      }
+
+      setRows(Array.isArray(j?.data) ? j.data : []);
+      setTotal(Number(j?.total ?? 0));
+    } catch (e: any) {
+      setError(e?.message || "Gagal memuat data");
+      setRows([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+      setInitialLoaded(true);
+    }
+  };
+
+  const onDelete = async (id: number) => {
+    if (!confirm("Hapus data ini?")) return;
+    try {
+      const r = await fetch(`/api/asn/${id}`, { method: "DELETE", credentials: "include" });
+      const j = await parseJsonSafe(r); // ⬅ pakai parser aman
+      if (!r.ok) throw new Error(j?.error || j?._text || `Gagal menghapus (HTTP ${r.status})`);
+      fetchData();
+    } catch (e: any) {
+      alert(e?.message || "Gagal menghapus");
+    }
+  };
+
+  // ...render biarkan seperti versi kamu sekarang...
+}
+
 type Row = {
   id: number;
   nama: string;
