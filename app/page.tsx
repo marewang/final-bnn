@@ -129,7 +129,7 @@ export default function Page() {
             onClick={openCreate}
             className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
           >
-            + Tambah ASN
+            + Tambah Pegawai
           </button>
         </div>
       </div>
