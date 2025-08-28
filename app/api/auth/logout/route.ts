@@ -1,9 +1,19 @@
-export const runtime = 'nodejs';
+// app/api/auth/logout/route.ts
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
-import { clearSessionCookie } from "@/lib/auth";
 
 export async function POST() {
-  const res = NextResponse.json({ ok: true });
-  res.headers.set("Set-Cookie", clearSessionCookie());
+  // balas JSON dan hapus cookie sesi
+  const res = NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+  res.cookies.set({
+    name: "session",
+    value: "",
+    httpOnly: true,
+    secure: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0, // expire segera = terhapus
+  });
   return res;
 }
