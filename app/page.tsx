@@ -46,7 +46,7 @@ export default function Page() {
       if (q) u.searchParams.set("q", q);
       u.searchParams.set("page", String(page));
       u.searchParams.set("pageSize", String(pageSize));
-      const r = await fetch(u, { cache: "no-store" });
+      const r = await fetch(u, { cache: "no-store", credentials: "include" });
       const j = await r.json();
       if (!r.ok) throw new Error(j?.error || "Gagal memuat data");
       setRows(j?.data ?? []);
@@ -86,7 +86,7 @@ export default function Page() {
 
   const onDelete = async (id: number) => {
     if (!confirm("Hapus data ini?")) return;
-    const r = await fetch(`/api/asn/${id}`, { method: "DELETE" });
+    const r = await fetch(`/api/asn/${id}`, { method: "DELETE", credentials: "include" });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) {
       alert(j?.error || "Gagal menghapus");
