@@ -1,112 +1,83 @@
-export const runtime = 'nodejs';
+// app/api/asn/route.ts
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { getSession } from "@/lib/auth";
+import { readSession } from "@/lib/auth";
 
-function escape(str: any) {
-  return String(str ?? "").replace(/'/g, "''");
-}
-function toDateLiteral(v: any) {
-  if (!v) return "NULL";
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return "NULL";
-  return `'${d.toISOString().slice(0,10)}'::date`;
-}
-function toTextLiteral(v: any) {
-  if (v === null || v === undefined || v === "") return "NULL";
-  return `'${escape(v)}'`;
-}
+type Row = {
+  id: number;
+  nama: string;
+  nip: string;
+  tmt_pns: string | null;
+  riwayat_tmt_kgb: string | null;
+  riwayat_tmt_pangkat: string | null;
+  jadwal_kgb_berikutnya: string | null;
+  jadwal_pangkat_berikutnya: string | null;
+  updated_at: string | null;
+};
 
-function escapeLike(input: string) {
-  return input
-    .replace(/\\/g, "\\\\")
-    .replace(/%/g, "\\%")
-    .replace(/_/g, "\\_")
-    .replace(/'/g, "''");
-}
+type Body = {
+  nama?: string;
+  nip?: string;
+  tmt_pns?: string | null;
+  riwayat_tmt_kgb?: string | null;
+  riwayat_tmt_pangkat?: string | null;
+  jadwal_kgb_berikutnya?: string | null;
+  jadwal_pangkat_berikutnya?: string | null;
+};
 
-// ---------- GET (list with search + paging) — PROTECTED ----------
 export async function GET(req: Request) {
-  const s = getSession(req);
-  if (!s) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const sess = readSession();
+  if (!sess) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  try {
-    const url = new URL(req.url);
-    const qRaw = (url.searchParams.get("q") || "").trim();
-    const page = Math.max(1, Number(url.searchParams.get("page") || "1"));
-    const pageSizeRaw = Math.max(1, Number(url.searchParams.get("pageSize") || "10"));
-    const pageSize = Math.min(100, pageSizeRaw);
-    const offset = (page - 1) * pageSize;
+  const { searchParams } = new URL(req.url);
+  const q = (searchParams.get("q") || "").trim();
+  const page = Math.max(1, Number(searchParams.get("page") || "1"));
+  const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize") || "10")));
+  const offset = (page - 1) * pageSize;
 
-    let where = "";
-    if (qRaw) {
-      const q = escapeLike(qRaw);
-      where = `WHERE (nama ILIKE '%${q}%' ESCAPE '\\' OR nip ILIKE '%${q}%' ESCAPE '\\')`;
-    }
+  // WHERE dinamis (gunakan template neon agar tetap parameterized)
+  const where =
+    q.length > 0
+      ? (sql as any)`WHERE nama ILIKE ${"%" + q + "%"} OR nip ILIKE ${"%" + q + "%"}`
+      : (sql as any)``;
 
-    const queryRows = `
-      SELECT id, nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat, jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya, updated_at
-      FROM "asns"
-      ${where}
-      ORDER BY updated_at DESC
-      LIMIT ${pageSize} OFFSET ${offset};
-    `;
+  const data = (await sql/* sql */`
+    SELECT id, nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat,
+           jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya, updated_at
+    FROM "asns"
+    ${where}
+    ORDER BY updated_at DESC NULLS LAST, id DESC
+    LIMIT ${pageSize} OFFSET ${offset};
+  `) as unknown as Row[];
 
-    const rows = await sql(queryRows);
+  const totalRows = (await sql/* sql */`
+    SELECT COUNT(*)::text AS count
+    FROM "asns"
+    ${where};
+  `) as unknown as Array<{ count: string }>;
 
-    const queryCount = `
-      SELECT COUNT(*)::int AS total
-      FROM "asns"
-      ${where};
-    `;
-    const totalRows = await sql(queryCount);
-    const total: number = (totalRows?.[0]?.total) ?? 0;
-    const pageCount = Math.max(1, Math.ceil(total / pageSize));
-
-    return NextResponse.json({ data: rows, page, pageSize, total, pageCount });
-  } catch (e:any) {
-    return NextResponse.json({ error: e?.message || "Gagal mengambil data" }, { status: 500 });
-  }
+  const total = Number(totalRows[0]?.count || 0);
+  return NextResponse.json({ data, total, page, pageSize }, { headers: { "Cache-Control": "no-store" } });
 }
 
-// ---------- POST (create) — PROTECTED ----------
 export async function POST(req: Request) {
-  const s = getSession(req);
-  if (!s) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const sess = readSession();
+  if (!sess) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  try {
-    const b = await req.json().catch(() => ({} as any));
-    // Terima camelCase atau snake_case
-    const nama = b.nama ?? b.name;
-    const nip = b.nip ?? b.nomorPegawai ?? b.nomor_pegawai;
-    const tmt_pns = b.tmt_pns ?? b.tmtPns;
-    const riwayat_tmt_kgb = b.riwayat_tmt_kgb ?? b.riwayatTmtKgb;
-    const riwayat_tmt_pangkat = b.riwayat_tmt_pangkat ?? b.riwayatTmtPangkat;
-    const jadwal_kgb_berikutnya = b.jadwal_kgb_berikutnya ?? b.jadwalKgbBerikutnya;
-    const jadwal_pangkat_berikutnya = b.jadwal_pangkat_berikutnya ?? b.jadwalPangkatBerikutnya;
+  const b = (await req.json()) as Body;
+  const nama = (b.nama || "").trim();
+  const nip = (b.nip || "").trim();
 
-    if (!nama || !nip) {
-      return NextResponse.json({ error: "Nama dan NIP wajib diisi" }, { status: 400 });
-    }
+  if (nama.length < 3) return NextResponse.json({ error: "Nama minimal 3 karakter" }, { status: 400 });
+  if (!/^\d{18}$/.test(nip)) return NextResponse.json({ error: "NIP harus 18 digit" }, { status: 400 });
 
-    const q = `
-      INSERT INTO "asns"
-      (nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat, jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya, created_at, updated_at)
-      VALUES (
-        ${toTextLiteral(nama)},
-        ${toTextLiteral(nip)},
-        ${toDateLiteral(tmt_pns)},
-        ${toDateLiteral(riwayat_tmt_kgb)},
-        ${toDateLiteral(riwayat_tmt_pangkat)},
-        ${toDateLiteral(jadwal_kgb_berikutnya)},
-        ${toDateLiteral(jadwal_pangkat_berikutnya)},
-        now(), now()
-      )
-      RETURNING id, nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat, jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya, updated_at;
-    `;
-    const rows = await sql(q);
-    return NextResponse.json(rows?.[0] ?? null);
-  } catch (e:any) {
-    return NextResponse.json({ error: e?.message || "Gagal membuat data" }, { status: 500 });
-  }
+  const rows = (await sql/* sql */`
+    INSERT INTO "asns" (nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat, jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya)
+    VALUES (${nama}, ${nip}, ${b.tmt_pns || null}, ${b.riwayat_tmt_kgb || null}, ${b.riwayat_tmt_pangkat || null}, ${b.jadwal_kgb_berikutnya || null}, ${b.jadwal_pangkat_berikutnya || null})
+    RETURNING id, nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat, jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya, updated_at;
+  `) as unknown as Row[];
+
+  return NextResponse.json(rows[0], { status: 201 });
 }
