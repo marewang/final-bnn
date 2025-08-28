@@ -1,11 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 
 export default function LoginPage() {
-  const router = useRouter();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -15,10 +12,7 @@ export default function LoginPage() {
   const [errMsg, setErrMsg] = useState<string | null>(null);
 
   const emailRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    emailRef.current?.focus();
-  }, []);
+  useEffect(() => { emailRef.current?.focus(); }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,10 +36,12 @@ export default function LoginPage() {
       }
 
       setOkMsg("Berhasil masuk. Mengalihkan ke dashboard…");
-      // beri sedikit jeda agar user melihat pesan sukses
-      setTimeout(() => {
-        router.replace("/"); // ke dashboard
-      }, 500);
+
+      // (opsional) beri tahu komponen lain untuk re-fetch user
+      try { new BroadcastChannel("auth").postMessage({ type: "login" }); } catch {}
+
+      // Hard navigation biar cookie langsung aktif di SSR/middleware/layout
+      window.location.href = "/";
     } catch (err: any) {
       setErrMsg(String(err?.message || err));
     } finally {
@@ -100,7 +96,7 @@ export default function LoginPage() {
             />
             <button
               type="button"
-              onClick={() => setShowPass((v) => !v)}
+              onClick={() => setShowPass(v => !v)}
               className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg border px-2 py-1 text-xs text-gray-700 hover:bg-gray-50"
               aria-label={showPass ? "Sembunyikan sandi" : "Tampilkan sandi"}
             >
