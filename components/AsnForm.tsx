@@ -84,6 +84,7 @@ export default function AsnForm({ initial, onCancel, onSaved }: Props) {
         method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        credentials: "include",
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j?.error || "Gagal menyimpan data");
