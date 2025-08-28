@@ -65,7 +65,8 @@ export default function AsnForm({ initial, onSaved, onCancel }: Props) {
 
   // Validasi sederhana
   const namaOk = nama.trim().length >= 3;
-  const nipOk = /^\d{18}$/.test(nip.trim());
+  // NIP boleh kosong, atau angka berapa pun panjangnya
+  const nipOk = nip.trim() === "" || /^\d+$/.test(nip.trim());
   const canSave = namaOk && nipOk;
 
   // Auto-isi jadwal KGB = Riwayat KGB + 2 tahun (jika belum diubah manual)
@@ -93,8 +94,9 @@ export default function AsnForm({ initial, onSaved, onCancel }: Props) {
   // Input handlers
   const onNama = (e: React.ChangeEvent<HTMLInputElement>) => setNama(e.target.value);
   const onNip = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value.replace(/\D+/g, "").slice(0, 18); // hanya angka, maks 18
-    setNip(v);
+  // hanya digit, TANPA batasi 18
+  const v = e.target.value.replace(/\D+/g, "");
+  setNip(v);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -160,12 +162,10 @@ export default function AsnForm({ initial, onSaved, onCancel }: Props) {
             value={nip}
             onChange={onNip}
             inputMode="numeric"
-            pattern="\d{18}"
             className="w-full rounded-lg border px-3 py-2 outline-none ring-2 ring-transparent focus:ring-indigo-200"
-            placeholder="Contoh: 198712312019032001"
-            required
+            placeholder="Boleh kosong atau angka saja"
           />
-          {!nipOk && <p className="mt-1 text-xs text-red-600">NIP harus 18 digit angka.</p>}
+          {!nipOk && <p className="mt-1 text-xs text-red-600">NIP hanya boleh angka.</p>}
         </div>
 
         <div>
