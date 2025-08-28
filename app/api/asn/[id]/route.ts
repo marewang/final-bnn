@@ -37,7 +37,6 @@ export async function PUT(req: Request, ctx: Ctx) {
   if (!Number.isFinite(id)) return NextResponse.json({ error: "Bad id" }, { status: 400 });
 
   const b = (await req.json()) as Body;
-
   const nama = (b.nama || "").trim();
   const nip = (b.nip || "").trim();
   if (nama.length < 3) return NextResponse.json({ error: "Nama minimal 3 karakter" }, { status: 400 });
@@ -54,7 +53,8 @@ export async function PUT(req: Request, ctx: Ctx) {
         jadwal_pangkat_berikutnya=${b.jadwal_pangkat_berikutnya || null},
         updated_at=NOW()
     WHERE id=${id}
-    RETURNING id, nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat, jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya, updated_at;
+    RETURNING id, nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat,
+              jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya, updated_at;
   `) as unknown as Row[];
 
   if (!rows[0]) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -72,7 +72,6 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   return NextResponse.json({ ok: true });
 }
 
-// (opsional) GET detail per id
 export async function GET(_req: Request, ctx: Ctx) {
   const sess = readSession();
   if (!sess) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
