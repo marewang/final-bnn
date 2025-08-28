@@ -37,7 +37,6 @@ export async function GET(req: Request) {
   const pageSize = Math.min(100, Math.max(1, Number(searchParams.get("pageSize") || "10")));
   const offset = (page - 1) * pageSize;
 
-  // WHERE dinamis (gunakan template neon agar tetap parameterized)
   const where =
     q.length > 0
       ? (sql as any)`WHERE nama ILIKE ${"%" + q + "%"} OR nip ILIKE ${"%" + q + "%"}`
@@ -74,9 +73,13 @@ export async function POST(req: Request) {
   if (!/^\d{18}$/.test(nip)) return NextResponse.json({ error: "NIP harus 18 digit" }, { status: 400 });
 
   const rows = (await sql/* sql */`
-    INSERT INTO "asns" (nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat, jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya)
-    VALUES (${nama}, ${nip}, ${b.tmt_pns || null}, ${b.riwayat_tmt_kgb || null}, ${b.riwayat_tmt_pangkat || null}, ${b.jadwal_kgb_berikutnya || null}, ${b.jadwal_pangkat_berikutnya || null})
-    RETURNING id, nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat, jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya, updated_at;
+    INSERT INTO "asns" (nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat,
+                        jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya)
+    VALUES (${nama}, ${nip}, ${b.tmt_pns || null}, ${b.riwayat_tmt_kgb || null},
+            ${b.riwayat_tmt_pangkat || null}, ${b.jadwal_kgb_berikutnya || null},
+            ${b.jadwal_pangkat_berikutnya || null})
+    RETURNING id, nama, nip, tmt_pns, riwayat_tmt_kgb, riwayat_tmt_pangkat,
+              jadwal_kgb_berikutnya, jadwal_pangkat_berikutnya, updated_at;
   `) as unknown as Row[];
 
   return NextResponse.json(rows[0], { status: 201 });
