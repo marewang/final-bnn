@@ -108,8 +108,8 @@ export default function Page() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Dashboard ASN</h1>
-          <p className="text-sm text-gray-600">Kelola data ASN (buat, ubah, hapus).</p>
+          <h1 className="text-xl font-semibold">Dashboard Pegawai</h1>
+          <p className="text-sm text-gray-600">Kelola Data Pegawai</p>
         </div>
         <div className="flex items-center gap-2">
           <input
