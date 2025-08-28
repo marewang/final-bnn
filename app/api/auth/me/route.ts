@@ -1,12 +1,21 @@
-export const runtime = 'nodejs';
+// app/api/auth/me/route.ts
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { readSession } from "@/lib/auth";
 import { sql } from "@/lib/db";
 
-export async function GET(req: Request) {
-  const s = getSession(req);
-  if (!s) return NextResponse.json({ user: null }, { status: 401 });
-  const rows = await sql(`SELECT id, name, email, role FROM "users" WHERE id = ${s.uid} LIMIT 1;`);
-  const user = rows?.[0] ?? null;
-  return NextResponse.json({ user });
+export async function GET() {
+  const sess = readSession();
+  if (!sess) return NextResponse.json({ user: null }, { status: 401, headers: { "Cache-Control": "no-store" } });
+
+  const rows = await sql/* sql */`
+    SELECT id, name, email, role
+    FROM "users"
+    WHERE id = ${sess.uid}
+    LIMIT 1;
+  ` as unknown as Array<{ id: number; name: string; email: string; role: string }>;
+
+  const user = rows[0] ?? { id: sess.uid, name: sess.email, email: sess.email, role: sess.role };
+  return NextResponse.json({ user }, { headers: { "Cache-Control": "no-store" } });
 }
