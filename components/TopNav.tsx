@@ -63,7 +63,7 @@ export default function TopNav() {
           >
             ☰
           </button>
-          <Link href="/" className="text-base font-semibold">ASN Monitor</Link>
+          <Link href="/" className="text-base font-semibold">BNN App</Link>
         </div>
 
         <nav className="hidden items-center gap-3 text-sm md:flex">
