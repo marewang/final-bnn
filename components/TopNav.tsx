@@ -23,8 +23,6 @@ export default function TopNav() {
       }
     };
     refetch();
-
-    // dengarkan event login/logout dari halaman lain
     let bc: BroadcastChannel | null = null;
     try {
       bc = new BroadcastChannel("auth");
@@ -68,7 +66,6 @@ export default function TopNav() {
           <Link href="/" className="text-base font-semibold">ASN Monitor</Link>
         </div>
 
-        {/* Desktop */}
         <nav className="hidden items-center gap-3 text-sm md:flex">
           <Link href="/" className="rounded-lg px-3 py-1 hover:bg-gray-100">Dashboard</Link>
           <Link href="/reminders" className="relative rounded-lg px-3 py-1 hover:bg-gray-100">
@@ -94,7 +91,6 @@ export default function TopNav() {
         </nav>
       </div>
 
-      {/* Mobile */}
       {open && (
         <div className="border-t bg-white md:hidden">
           <nav className="mx-auto flex max-w-6xl flex-col p-2 text-sm">
@@ -118,4 +114,3 @@ export default function TopNav() {
     </header>
   );
 }
-
