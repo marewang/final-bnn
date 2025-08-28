@@ -39,7 +39,7 @@ export default function RemindersPage() {
     setLoading(true);
     setErr(null);
     try {
-      const r = await fetch(`/api/reminders?months=${months}`, { cache: "no-store" });
+      const r = await fetch(`/api/reminders?months=${months}`, { cache: "no-store", credentials: "include" });
       if (!r.ok) throw new Error(await r.text());
       const j = await r.json();
       setKgb(j?.kgb ?? []);
