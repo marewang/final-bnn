@@ -4,20 +4,6 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import AsnForm from "@/components/AsnForm";
 
-// ⬇⬇ Tambahkan helper aman untuk baca JSON
-async function parseJsonSafe(res: Response): Promise<any> {
-  const ct = res.headers.get("content-type") || "";
-  if (ct.includes("application/json")) {
-    try { return await res.json(); } catch { return null; }
-  }
-  try {
-    const txt = await res.text();
-    return txt ? { _text: txt } : null;
-  } catch {
-    return null;
-  }
-}
-
 type Row = {
   id: number;
   nama: string;
