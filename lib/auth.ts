@@ -2,7 +2,7 @@
 import { cookies } from "next/headers";
 import { createHmac, timingSafeEqual } from "crypto";
 
-const AUTH_SECRET = process.env.AUTH_SECRET || "dev-secret";
+const AUTH_SECRET = process.env.AUTH_SECRET || "dev-secret"; // set di Vercel
 
 function b64urlToBuf(s: string) {
   s = s.replace(/-/g, "+").replace(/_/g, "/");
