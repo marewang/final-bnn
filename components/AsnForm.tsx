@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { parseJsonSafe } from "@/lib/json";
 
 type Row = {
@@ -20,11 +20,28 @@ type Props = {
   onCancel?: () => void;
 };
 
+// --- Helpers tanggal ---
 function toISO(d?: string | null) {
   if (!d) return "";
-  const x = new Date(d);
-  if (Number.isNaN(x.getTime())) return "";
-  return x.toISOString().slice(0, 10);
+  const [y, m, dd] = (d || "").slice(0, 10).split("-").map(Number);
+  if (!y || !m || !dd) return "";
+  const dt = new Date(y, m - 1, dd);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd2 = String(dt.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd2}`;
+}
+
+function addYearsISO(ymd: string, years: number) {
+  if (!ymd) return "";
+  const [y, m, d] = ymd.split("-").map(Number);
+  if (!y || !m || !d) return "";
+  const dt = new Date(y, m - 1, d);
+  dt.setFullYear(dt.getFullYear() + years);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const dd2 = String(dt.getDate()).padStart(2, "0");
+  return `${yy}-${mm}-${dd2}`;
 }
 
 export default function AsnForm({ initial, onSaved, onCancel }: Props) {
@@ -39,9 +56,11 @@ export default function AsnForm({ initial, onSaved, onCancel }: Props) {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
+  const [manualKgb, setManualKgb] = useState<boolean>(Boolean(initial?.jadwal_kgb_berikutnya));
+  const [manualPangkat, setManualPangkat] = useState<boolean>(Boolean(initial?.jadwal_pangkat_berikutnya));
+
   const isEdit = Boolean(initial?.id);
   const namaRef = useRef<HTMLInputElement | null>(null);
-
   useEffect(() => { namaRef.current?.focus(); }, []);
 
   // Validasi sederhana
@@ -49,11 +68,32 @@ export default function AsnForm({ initial, onSaved, onCancel }: Props) {
   const nipOk = /^\d{18}$/.test(nip.trim());
   const canSave = namaOk && nipOk;
 
-  // Input handler: cegah ketik massal (lag), tetap smooth
+  // Auto-isi jadwal KGB = Riwayat KGB + 2 tahun (jika belum diubah manual)
+  useEffect(() => {
+    if (!manualKgb) {
+      if (riwayat_tmt_kgb) {
+        setJadwalKgb(addYearsISO(riwayat_tmt_kgb, 2));
+      } else {
+        setJadwalKgb("");
+      }
+    }
+  }, [riwayat_tmt_kgb, manualKgb]);
+
+  // Auto-isi jadwal Pangkat = Riwayat Pangkat + 4 tahun (jika belum diubah manual)
+  useEffect(() => {
+    if (!manualPangkat) {
+      if (riwayat_tmt_pangkat) {
+        setJadwalPangkat(addYearsISO(riwayat_tmt_pangkat, 4));
+      } else {
+        setJadwalPangkat("");
+      }
+    }
+  }, [riwayat_tmt_pangkat, manualPangkat]);
+
+  // Input handlers
   const onNama = (e: React.ChangeEvent<HTMLInputElement>) => setNama(e.target.value);
   const onNip = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // hanya digit, maksimal 18
-    const v = e.target.value.replace(/\D+/g, "").slice(0, 18);
+    const v = e.target.value.replace(/\D+/g, "").slice(0, 18); // hanya angka, maks 18
     setNip(v);
   };
 
@@ -130,28 +170,74 @@ export default function AsnForm({ initial, onSaved, onCancel }: Props) {
 
         <div>
           <label className="mb-1 block text-sm font-medium">TMT PNS</label>
-          <input type="date" value={tmt_pns} onChange={(e) => setTmtPns(e.target.value || "")}
-                 className="w-full rounded-lg border px-3 py-2" />
+          <input
+            type="date"
+            value={tmt_pns}
+            onChange={(e) => setTmtPns(e.target.value || "")}
+            className="w-full rounded-lg border px-3 py-2"
+          />
         </div>
+
         <div>
           <label className="mb-1 block text-sm font-medium">Riwayat TMT KGB</label>
-          <input type="date" value={riwayat_tmt_kgb} onChange={(e) => setRiwayatKgb(e.target.value || "")}
-                 className="w-full rounded-lg border px-3 py-2" />
+          <input
+            type="date"
+            value={riwayat_tmt_kgb}
+            onChange={(e) => setRiwayatKgb(e.target.value || "")}
+            className="w-full rounded-lg border px-3 py-2"
+          />
         </div>
+
+        <div className="sm:col-span-2">
+          <div className="flex items-center justify-between">
+            <label className="mb-1 block text-sm font-medium">Jadwal KGB Berikutnya</label>
+            <button
+              type="button"
+              className="text-xs text-indigo-700 hover:underline"
+              onClick={() => { setManualKgb(false); /* trigger re-calc via effect */ }}
+              title="Hitung otomatis dari Riwayat TMT KGB (+2 tahun)"
+            >
+              ↺ Otomatis
+            </button>
+          </div>
+          <input
+            type="date"
+            value={jadwal_kgb_berikutnya}
+            onChange={(e) => { setJadwalKgb(e.target.value || ""); setManualKgb(true); }}
+            className="w-full rounded-lg border px-3 py-2"
+          />
+          <p className="mt-1 text-[11px] text-gray-500">Otomatis = Riwayat TMT KGB + <b>2 tahun</b>.</p>
+        </div>
+
         <div>
           <label className="mb-1 block text-sm font-medium">Riwayat TMT Pangkat</label>
-          <input type="date" value={riwayat_tmt_pangkat} onChange={(e) => setRiwayatPangkat(e.target.value || "")}
-                 className="w-full rounded-lg border px-3 py-2" />
+          <input
+            type="date"
+            value={riwayat_tmt_pangkat}
+            onChange={(e) => setRiwayatPangkat(e.target.value || "")}
+            className="w-full rounded-lg border px-3 py-2"
+          />
         </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">Jadwal KGB Berikutnya</label>
-          <input type="date" value={jadwal_kgb_berikutnya} onChange={(e) => setJadwalKgb(e.target.value || "")}
-                 className="w-full rounded-lg border px-3 py-2" />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium">Jadwal Pangkat Berikutnya</label>
-          <input type="date" value={jadwal_pangkat_berikutnya} onChange={(e) => setJadwalPangkat(e.target.value || "")}
-                 className="w-full rounded-lg border px-3 py-2" />
+
+        <div className="sm:col-span-2">
+          <div className="flex items-center justify-between">
+            <label className="mb-1 block text-sm font-medium">Jadwal Pangkat Berikutnya</label>
+            <button
+              type="button"
+              className="text-xs text-indigo-700 hover:underline"
+              onClick={() => { setManualPangkat(false); /* trigger re-calc via effect */ }}
+              title="Hitung otomatis dari Riwayat TMT Pangkat (+4 tahun)"
+            >
+              ↺ Otomatis
+            </button>
+          </div>
+          <input
+            type="date"
+            value={jadwal_pangkat_berikutnya}
+            onChange={(e) => { setJadwalPangkat(e.target.value || ""); setManualPangkat(true); }}
+            className="w-full rounded-lg border px-3 py-2"
+          />
+          <p className="mt-1 text-[11px] text-gray-500">Otomatis = Riwayat TMT Pangkat + <b>4 tahun</b>.</p>
         </div>
       </div>
 
