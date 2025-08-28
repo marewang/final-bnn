@@ -5,10 +5,10 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const hasSession = Boolean(req.cookies.get("session")?.value);
 
-  // Allow always: auth APIs
+  // selalu boleh
   if (pathname.startsWith("/api/auth")) return NextResponse.next();
 
-  // Lock all other APIs
+  // kunci semua api lain
   if (pathname.startsWith("/api")) {
     if (!hasSession) {
       return new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
@@ -19,7 +19,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow static/public
+  // static/public
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/assets") ||
@@ -30,7 +30,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // If not logged in → force to /login
+  // redirect ke login bila belum login
   if (!hasSession && pathname !== "/login") {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
@@ -38,7 +38,7 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // If already logged in but visiting /login → go dashboard
+  // sudah login tapi buka /login → arahkan ke dashboard
   if (hasSession && pathname === "/login") {
     const url = req.nextUrl.clone();
     url.pathname = "/";
