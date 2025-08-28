@@ -1,27 +1,17 @@
-import { NextResponse, NextRequest } from "next/server";
+// middleware.ts
+import { NextRequest, NextResponse } from "next/server";
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const hasSession = Boolean(req.cookies.get("session")?.value);
 
-  // Always allow login page and Next assets
-  if (
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/_next") ||
-    pathname === "/favicon.ico" ||
-    pathname.startsWith("/assets")
-  ) {
-    return NextResponse.next();
-  }
+  // Allow always: auth APIs
+  if (pathname.startsWith("/api/auth")) return NextResponse.next();
 
-  // For API:
+  // Lock all other APIs
   if (pathname.startsWith("/api")) {
-    // Allow auth endpoints without session
-    if (pathname.startsWith("/api/auth/")) {
-      return NextResponse.next();
-    }
-    const hasSession = req.cookies.get("session");
     if (!hasSession) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      return new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { "content-type": "application/json" },
       });
@@ -29,12 +19,29 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // For pages:
-  const hasSession = req.cookies.get("session");
-  if (!hasSession) {
+  // Allow static/public
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/assets") ||
+    pathname === "/favicon.ico" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml"
+  ) {
+    return NextResponse.next();
+  }
+
+  // If not logged in → force to /login
+  if (!hasSession && pathname !== "/login") {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("returnTo", pathname || "/");
+    url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
+  }
+
+  // If already logged in but visiting /login → go dashboard
+  if (hasSession && pathname === "/login") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 
@@ -42,5 +49,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)"],
 };
