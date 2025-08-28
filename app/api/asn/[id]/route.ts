@@ -40,7 +40,9 @@ export async function PUT(req: Request, ctx: Ctx) {
   const nama = (b.nama || "").trim();
   const nip = (b.nip || "").trim();
   if (nama.length < 3) return NextResponse.json({ error: "Nama minimal 3 karakter" }, { status: 400 });
-  if (!/^\d{18}$/.test(nip)) return NextResponse.json({ error: "NIP harus 18 digit" }, { status: 400 });
+  if (nip !== "" && !/^\d+$/.test(nip)) {
+     return NextResponse.json({ error: "NIP hanya boleh angka" }, { status: 400 });
+  }
 
   const rows = (await sql/* sql */`
     UPDATE "asns"
