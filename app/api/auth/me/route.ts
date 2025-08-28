@@ -7,8 +7,11 @@ import { sql } from "@/lib/db";
 
 export async function GET() {
   const sess = readSession();
-  if (!sess) return NextResponse.json({ user: null }, { status: 401, headers: { "Cache-Control": "no-store" } });
+  if (!sess) {
+    return NextResponse.json({ user: null }, { status: 401, headers: { "Cache-Control": "no-store" } });
+  }
 
+  // Ambil info user terbaru dari DB (opsional, tapi bagus)
   const rows = await sql/* sql */`
     SELECT id, name, email, role
     FROM "users"
