@@ -1,47 +1,80 @@
-export const runtime = 'nodejs';
+// app/api/auth/register/route.ts
+export const dynamic = "force-dynamic";
+
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { getSession, hashPassword } from "@/lib/auth";
+import { readSession, hashPassword } from "@/lib/auth";
 
 async function ensureUsersTable() {
-  await sql(`
+  await sql/* sql */`
     CREATE TABLE IF NOT EXISTS "users" (
-      id SERIAL PRIMARY KEY,
+      id BIGSERIAL PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'user',
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      password_hash TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
-  `);
+  `;
 }
 
 export async function POST(req: Request) {
+  await ensureUsersTable();
+
+  const { name, email, password, role } = (await req.json()) as {
+    name?: string;
+    email?: string;
+    password?: string;
+    role?: string;
+  };
+
+  if (!name || !email || !password) {
+    return NextResponse.json({ error: "name, email, password wajib diisi" }, { status: 400 });
+  }
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    return NextResponse.json({ error: "Format email tidak valid" }, { status: 400 });
+  }
+  if (password.length < 6) {
+    return NextResponse.json({ error: "Password minimal 6 karakter" }, { status: 400 });
+  }
+
+  // Cek jumlah user
+  const cnt = await sql/* sql */`SELECT COUNT(*)::int AS n FROM "users";` as unknown as Array<{ n: number }>;
+  const totalUsers = cnt[0]?.n ?? 0;
+
+  // Jika sudah ada user, hanya admin yang boleh register user baru
+  let finalRole = "user";
+  if (totalUsers === 0) {
+    // pendaftaran pertama — izinkan tanpa login, default admin
+    finalRole = role === "user" ? "user" : "admin";
+  } else {
+    const sess = readSession();
+    if (!sess) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    // Ambil role terbaru dari DB (opsional)
+    const u = await sql/* sql */`
+      SELECT role FROM "users" WHERE id = ${sess.uid} LIMIT 1;
+    ` as unknown as Array<{ role: string }>;
+    const myRole = u[0]?.role ?? sess.role;
+    if (myRole !== "admin") return NextResponse.json({ error: "Hanya admin yang dapat menambah user" }, { status: 403 });
+    finalRole = role === "admin" ? "admin" : "user";
+  }
+
+  const pwdHash = hashPassword(password);
+
   try {
-    await ensureUsersTable();
-    const body = await req.json().catch(() => ({}));
-    const { name, email, password, role } = body ?? {};
-    if (!name || !email || !password) return NextResponse.json({ error: "Nama, email, password wajib" }, { status: 400 });
-
-    const countRows = await sql(`SELECT COUNT(*)::int AS c FROM "users";`);
-    const count = countRows?.[0]?.c ?? 0;
-    if (count > 0) {
-      const s = getSession(req);
-      if (!s) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      if (s.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const pass = await hashPassword(password);
-    const safeName = String(name).replace(/'/g, "''");
-    const safeEmail = String(email).replace(/'/g, "''");
-    const r = await sql(`
-      INSERT INTO "users"(name, email, password_hash, role)
-      VALUES ('${safeName}', '${safeEmail}', '${pass}', '${role === "admin" ? "admin" : "user"}')
+    const rows = await sql/* sql */`
+      INSERT INTO "users" (name, email, role, password_hash)
+      VALUES (${name.trim()}, ${email.trim().toLowerCase()}, ${finalRole}, ${pwdHash})
       RETURNING id, name, email, role;
-    `);
-    return NextResponse.json({ ok: true, user: r?.[0] });
-  } catch (e:any) {
-    return NextResponse.json({ error: e?.message || "Gagal registrasi" }, { status: 500 });
+    ` as unknown as Array<{ id: number; name: string; email: string; role: string }>;
+
+    return NextResponse.json({ user: rows[0] }, { status: 201 });
+  } catch (e: any) {
+    const msg = String(e?.message || "");
+    if (msg.toLowerCase().includes("duplicate key")) {
+      return NextResponse.json({ error: "Email sudah terdaftar" }, { status: 409 });
+    }
+    return NextResponse.json({ error: "Gagal membuat user: " + msg }, { status: 500 });
   }
 }
