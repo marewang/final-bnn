@@ -1,92 +1,37 @@
-import { createHmac, randomBytes, timingSafeEqual, scryptSync } from "node:crypto";
+// lib/auth.ts
+import { cookies } from "next/headers";
+import { createHmac, timingSafeEqual } from "crypto";
 
-const SESSION_NAME = "session";
-const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
+const AUTH_SECRET = process.env.AUTH_SECRET || "dev-secret";
 
-function getSecret(): string {
-  const s = process.env.AUTH_SECRET;
-  if (!s) throw new Error("Missing AUTH_SECRET env");
-  return s;
+function b64urlToBuf(s: string) {
+  s = s.replace(/-/g, "+").replace(/_/g, "/");
+  const pad = s.length % 4 ? 4 - (s.length % 4) : 0;
+  s += "=".repeat(pad);
+  return Buffer.from(s, "base64");
 }
 
-// Password hashing (scryptSync)
-export async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(16);
-  const N = 16384, r = 8, p = 1, keylen = 32;
-  const key = scryptSync(password, salt, keylen, { N, r, p });
-  return `scrypt$${N}$${r}$${p}$${salt.toString("hex")}$${key.toString("hex")}`;
-}
+export type SessionPayload = { uid: number; email: string; role: string; iat: number };
 
-export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+export function readSession(): SessionPayload | null {
+  const token = cookies().get("session")?.value;
+  if (!token) return null;
+  const [p, s] = token.split(".");
+  if (!p || !s) return null;
+
+  const payloadBytes = b64urlToBuf(p);
+  const sigBytes = b64urlToBuf(s);
+  const expSig = createHmac("sha256", AUTH_SECRET).update(payloadBytes).digest();
+
   try {
-    const [algo, nStr, rStr, pStr, saltHex, keyHex] = stored.split("$");
-    if (algo !== "scrypt") return false;
-    const N = Number(nStr), r = Number(rStr), p = Number(pStr);
-    const salt = Buffer.from(saltHex, "hex");
-    const expected = Buffer.from(keyHex, "hex");
-    const derived = scryptSync(password, salt, expected.length, { N, r, p });
-    return derived.length === expected.length && timingSafeEqual(derived, expected);
+    if (sigBytes.length !== expSig.length || !timingSafeEqual(sigBytes, expSig)) return null;
   } catch {
-    return false;
+    return null;
   }
-}
 
-type SessionPayload = { uid: number; email: string; name: string; role?: string; exp: number };
-
-export function signSession(payload: Omit<SessionPayload, "exp">, maxAgeSec = SESSION_MAX_AGE_SECONDS): string {
-  const exp = Math.floor(Date.now() / 1000) + maxAgeSec;
-  const body = Buffer.from(JSON.stringify({ ...payload, exp })).toString("base64url");
-  const sig = createHmac("sha256", getSecret()).update(body).digest("base64url");
-  return `${body}.${sig}`;
-}
-
-export function verifySessionCookie(raw?: string): SessionPayload | null {
-  if (!raw) return null;
-  const parts = raw.split(".");
-  if (parts.length !== 2) return null;
-  const [body, sig] = parts;
-  const expected = createHmac("sha256", getSecret()).update(body).digest("base64url");
-  const ok = timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
-  if (!ok) return null;
-  const payload = JSON.parse(Buffer.from(body, "base64url").toString());
-  if (!payload?.exp || Date.now() / 1000 > payload.exp) return null;
-  return payload as SessionPayload;
-}
-
-export function buildSessionCookie(value: string, maxAgeSec = SESSION_MAX_AGE_SECONDS) {
-  const attrs = [
-    `${SESSION_NAME}=${value}`,
-    "Path=/",
-    "HttpOnly",
-    "Secure",
-    "SameSite=Lax",
-    `Max-Age=${maxAgeSec}`,
-  ];
-  return attrs.join("; ");
-}
-
-export function clearSessionCookie() {
-  const attrs = [
-    `${SESSION_NAME}=;`,
-    "Path=/",
-    "HttpOnly",
-    "Secure",
-    "SameSite=Lax",
-    "Max-Age=0",
-  ];
-  return attrs.join("; ");
-}
-
-export function readCookie(req: Request, name: string): string | undefined {
-  const raw = req.headers.get("cookie") || "";
-  const cookies = raw.split(";").map(s => s.trim());
-  for (const c of cookies) {
-    const [k, ...rest] = c.split("=");
-    if (k === name) return rest.join("=");
+  try {
+    return JSON.parse(Buffer.from(payloadBytes).toString("utf8"));
+  } catch {
+    return null;
   }
-}
-
-export function getSession(req: Request): SessionPayload | null {
-  const raw = readCookie(req, "session");
-  return verifySessionCookie(raw);
 }
